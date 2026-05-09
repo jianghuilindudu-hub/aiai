@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生产、物流关键指标看板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        /* 标题样式 */
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            padding: 24px 30px 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* 标签页样式 */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 0 30px;
+        }
+
+        .tab-item {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab-item.active {
+            color: #165dff;
+            border-bottom-color: #165dff;
+            background-color: #f0f7ff;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .tab-item:hover:not(.active) {
+            color: #165dff;
+            background-color: #f9fafb;
+        }
+
+        /* 面板内容样式 */
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .panel-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .panel-subtitle {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+
+        /* 指标卡片网格 */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        /* 指标卡片样式 */
+        .indicator-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 20px;
+            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid #f3f4f6;
+            transition: transform 0.2s ease;
+        }
+
+        .indicator-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-unit {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+
+        .card-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 12px;
+        }
+
+        .card-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .value-success {
+            color: #00b42a;
+        }
+
+        .value-danger {
+            color: #ff3b30;
+        }
+
+        .card-detail {
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #4b5563;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .card-detail .detail-label {
+            font-weight: 500;
+        }
+
+        .card-detail .detail-value {
+            font-weight: 600;
+        }
+
+        /* 进度条样式 */
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background-color: #f3f4f6;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+
+        .progress-success {
+            background-color: #00b42a;
+        }
+
+        .progress-danger {
+            background-color: #ff3b30;
+        }
+
+        /* 状态标签 */
+        .status-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-success {
+            background-color: #ecfccb;
+            color: #365314;
+        }
+
+        .status-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* 图表容器 */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+        }
+
+        .chart-container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 20px;
+            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid #f3f4f6;
+            height: 400px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .header-title {
+                font-size: 22px;
+                padding: 20px 20px 12px;
+            }
+
+            .tabs {
+                padding: 0 20px;
+                overflow-x: auto;
+            }
+
+            .tab-item {
+                padding: 10px 16px;
+                font-size: 14px;
+                white-space: nowrap;
+            }
+
+            .tab-content {
+                padding: 20px;
+            }
+
+            .panel-title {
+                font-size: 20px;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 标题 -->
+        <div class="header-title">生产、物流关键指标看板</div>
+
+        <!-- 标签页切换 -->
+        <div class="tabs">
+            <div class="tab-item active" data-tab="core">核心生产指标</div>
+            <div class="tab-item" data-tab="refining">精炼板块生产指标</div>
+            <div class="tab-item" data-tab="oil">榨油板块生产指标</div>
+        </div>
+
+        <!-- 核心生产指标面板（已修改标题、物流接卸量标注） -->
+        <div class="tab-content active" id="core">
+            <div class="panel-title">核心生产加工指标</div>
+            <div class="panel-subtitle">统计周期：2026年1-4月</div>
+            
+            <div class="card-grid">
+                <!-- 原料加工量 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：万吨</div>
+                    <div class="card-name">原料加工量</div>
+                    <div class="card-value value-success">5.643</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">5.643</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-success">22.44</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">累计达成率</span>
+                        <span class="detail-value value-success">37.40%</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">全年目标 ≥60</span>
+                        <span class="status-tag status-success">已达标</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-success" style="width: 37.40%"></div>
+                    </div>
+                </div>
+
+                <!-- 精炼加工量 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：万吨</div>
+                    <div class="card-name">精炼加工量</div>
+                    <div class="card-value value-success">1.53</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">1.53</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-danger">3.98</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">累计达成率</span>
+                        <span class="detail-value value-danger">30.62%</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">全年目标 ≥13</span>
+                        <span class="status-tag status-danger">未达标</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-danger" style="width: 30.62%"></div>
+                    </div>
+                </div>
+
+                <!-- 灌装量 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：万吨</div>
+                    <div class="card-name">灌装量</div>
+                    <div class="card-value value-danger">0.26</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">0.26</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-danger">1.02</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">累计达成率</span>
+                        <span class="detail-value value-danger">21.52%</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">全年目标 ≥4.74</span>
+                        <span class="status-tag status-danger">未达标</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-danger" style="width: 21.52%"></div>
+                    </div>
+                </div>
+
+                <!-- 物流接卸量（已按要求调整：月度红、年度绿） -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：万吨</div>
+                    <div class="card-name">物流接卸量</div>
+                    <div class="card-value value-danger">7.42</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value value-danger">7.42</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-success">36.9</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">累计达成率</span>
+                        <span class="detail-value value-success">36.90%</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">全年目标 ≥100</span>
+                        <span class="status-tag status-success">已达标</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-success" style="width: 36.90%"></div>
+                    </div>
+                </div>
+
+                <!-- 中转创效 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：万元</div>
+                    <div class="card-name">中转创效</div>
+                    <div class="card-value value-danger">28.46</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">28.46</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-danger">115</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">累计达成率</span>
+                        <span class="detail-value value-danger">23.00%</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">全年目标 ≥500</span>
+                        <span class="status-tag status-danger">未达标</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-danger" style="width: 23.00%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 精炼板块生产指标面板（已调整精炼蒸汽单耗标注） -->
+        <div class="tab-content" id="refining">
+            <div class="panel-title">精炼板块生产指标</div>
+            <div class="panel-subtitle">统计周期：2026年1-4月</div>
+            
+            <div class="card-grid">
+                <!-- 精炼得率 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：%</div>
+                    <div class="card-name">精炼得率</div>
+                    <div class="card-value value-success">97.51</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">97.51</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-success">97.52</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≥97.5</span>
+                        <span class="status-tag status-success">完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-success" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <!-- 精炼蒸汽单耗（已按要求调整：月度绿、年度红） -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：KG/T</div>
+                    <div class="card-name">精炼蒸汽单耗</div>
+                    <div class="card-value value-success">45.69</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value value-success">45.69</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-danger">51.01</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≤50</span>
+                        <span class="status-tag status-danger">未完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-danger" style="width: 102.02%"></div>
+                    </div>
+                </div>
+
+                <!-- 精炼电单耗 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：KWH/T</div>
+                    <div class="card-name">精炼电单耗</div>
+                    <div class="card-value value-success">14.05</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">14.05</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-success">14.91</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≤15</span>
+                        <span class="status-tag status-success">完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-success" style="width: 99.40%"></div>
+                    </div>
+                </div>
+
+                <!-- 磷脂蒸汽单耗 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：KG/T</div>
+                    <div class="card-name">磷脂蒸汽单耗</div>
+                    <div class="card-value value-success">32.25</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">32.25</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-success">39.85</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≤40</span>
+                        <span class="status-tag status-success">完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-success" style="width: 99.63%"></div>
+                    </div>
+                </div>
+
+                <!-- 磷脂电单耗 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：KWH/T</div>
+                    <div class="card-name">磷脂电单耗</div>
+                    <div class="card-value value-success">6.60</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">6.60</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-success">7.48</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≤7.5</span>
+                        <span class="status-tag status-success">完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-success" style="width: 99.73%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 榨油板块生产指标面板 -->
+        <div class="tab-content" id="oil">
+            <div class="panel-title">榨油板块生产指标</div>
+            <div class="panel-subtitle">统计周期：2026年1-4月</div>
+            
+            <div class="card-grid">
+                <!-- 溶剂单耗 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：KG/T</div>
+                    <div class="card-name">溶剂单耗</div>
+                    <div class="card-value value-danger">0.70</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">0.70</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-danger">0.71</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≤0.69</span>
+                        <span class="status-tag status-danger">未完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-danger" style="width: 102.90%"></div>
+                    </div>
+                </div>
+
+                <!-- 蒸汽单耗 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：KG/T</div>
+                    <div class="card-name">蒸汽单耗</div>
+                    <div class="card-value value-success">162.86</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">162.86</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-danger">166.30</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≤165</span>
+                        <span class="status-tag status-danger">未完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-danger" style="width: 100.79%"></div>
+                    </div>
+                </div>
+
+                <!-- 电单耗 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：KWH/T</div>
+                    <div class="card-name">电单耗</div>
+                    <div class="card-value value-danger">24.60</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">24.60</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-danger">24.39</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≤24</span>
+                        <span class="status-tag status-danger">未完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-danger" style="width: 101.63%"></div>
+                    </div>
+                </div>
+
+                <!-- 豆粕残油 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：%</div>
+                    <div class="card-name">豆粕残油</div>
+                    <div class="card-value value-success">0.86</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">0.86</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-success">0.84</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≤0.87</span>
+                        <span class="status-tag status-success">完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-success" style="width: 96.55%"></div>
+                    </div>
+                </div>
+
+                <!-- 豆粕水分 -->
+                <div class="indicator-card">
+                    <div class="card-unit">单位：%</div>
+                    <div class="card-name">豆粕水分</div>
+                    <div class="card-value value-success">13.34</div>
+                    <div class="card-detail">
+                        <span class="detail-label">4月单月</span>
+                        <span class="detail-value">13.34</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">1-4月累计</span>
+                        <span class="detail-value value-success">13.33</span>
+                    </div>
+                    <div class="card-detail">
+                        <span class="detail-label">目标 ≥13.30</span>
+                        <span class="status-tag status-success">完成</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-success" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 对比图表 -->
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">蒸汽单耗对比（2025年VS2026年）</div>
+                    <canvas id="steamChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">溶剂单耗对比（2025年VS2026年）</div>
+                    <canvas id="solventChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 标签页切换功能
+        const tabItems = document.querySelectorAll('.tab-item');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // 移除所有激活状态
+                tabItems.forEach(tab => tab.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+
+                // 添加当前激活状态
+                item.classList.add('active');
+                const tabId = item.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+
+                // 切换到榨油板块时初始化图表
+                if (tabId === 'oil') {
+                    initCharts();
+                }
+            });
+        });
+
+        // 图表初始化函数
+        function initCharts() {
+            // 注册数据标签插件
+            Chart.register(ChartDataLabels);
+
+            // 蒸汽单耗对比图表
+            const steamCtx = document.getElementById('steamChart').getContext('2d');
+            new Chart(steamCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['1月', '2月', '3月', '4月'],
+                    datasets: [
+                        {
+                            label: '2026年',
+                            data: [169.52, 167.60, 165.71, 162.86],
+                            backgroundColor: '#165dff',
+                            borderRadius: 4,
+                            barThickness: 40
+                        },
+                        {
+                            label: '2025年',
+                            data: [167.98, 171.63, 172.44, 168.66],
+                            backgroundColor: '#d1d5db',
+                            borderRadius: 4,
+                            barThickness: 40
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 14 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.raw + ' KG/T';
+                                }
+                            }
+                        },
+                        // 数据标签配置
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#1f2937',
+                            font: {
+                                weight: 600,
+                                size: 12
+                            },
+                            formatter: function(value) {
+                                return value + ' KG/T';
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 160,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + ' KG/T';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 溶剂单耗对比图表
+            const solventCtx = document.getElementById('solventChart').getContext('2d');
+            new Chart(solventCtx, {
+                type: 'line',
+                data: {
+                    labels: ['1月', '2月', '3月', '4月'],
+                    datasets: [
+                        {
+                            label: '2026年',
+                            data: [0.75, 0.71, 0.70, 0.70],
+                            borderColor: '#165dff',
+                            backgroundColor: '#165dff',
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: '2025年',
+                            data: [0.67, 0.75, 0.75, 0.75],
+                            borderColor: '#d1d5db',
+                            backgroundColor: '#d1d5db',
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 14 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.raw + ' KG/T';
+                                }
+                            }
+                        },
+                        // 数据标签配置
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#1f2937',
+                            font: {
+                                weight: 600,
+                                size: 12
+                            },
+                            formatter: function(value) {
+                                return value + ' KG/T';
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 0.66,
+                            max: 0.8,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + ' KG/T';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 页面加载完成后，默认初始化核心面板的进度条动画
+        window.addEventListener('load', () => {
+            const progressBars = document.querySelectorAll('.progress-bar');
+            progressBars.forEach(bar => {
+                const width = bar.style.width;
+                bar.style.width = '0';
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>
